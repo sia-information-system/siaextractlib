@@ -1,0 +1,3 @@
+[DEFAULT]
+COPERNICUS_USER = your_username
+COPERNICUS_PASSWD = your_passwd

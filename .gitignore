@@ -1,0 +1,18 @@
+# General
+.vscode
+.venv
+venv
+tmp
+dist
+
+# Configuration files
+etc/config.ini
+
+# Lib cache
+__pycache__
+omdepextractlib/__pycache__
+omdepextractlib/sources/__pycache__
+omdepextractlib/utils/__pycache__
+
+# Other cache
+tools/__pycache__

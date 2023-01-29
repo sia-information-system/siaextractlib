@@ -7,6 +7,9 @@ meteorological data repositories to extract slices of data programaticaly.
 ## Table of content
 
 - [Dependencies](#dependencies)
+- [Install](#install)
+  - [Production mode](#production-mode)
+  - [Development mode](#development-mode)
 - [Tests](#tests)
 - [CLI](#cli)
 
@@ -20,6 +23,29 @@ and install the required dependencies in there.
 - netCDF4
 - motuclient
 - Dask
+
+## Install
+
+The following instructions cover a local installation.
+See [local installation](https://pip.pypa.io/en/stable/topics/local-project-installs/) for details.
+
+### Production mode
+
+To install the package in production mode, run the following command in the
+package root directory (where de `pyproject.toml` file is located):
+
+```
+pip install .
+```
+
+### Development mode
+
+To install the package in development mode (--editable), run the following command
+in the package root directory (where de `pyproject.toml` file is located):
+
+``` sh
+pip install --editable .
+```
 
 ## Tests
 

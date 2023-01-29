@@ -3,10 +3,10 @@ from omdepextractlib.sources import copernicus
 import time
 import sys
 import unittest
-import tools.general_utils as general_utils
+import tests.lib.general_utils as general_utils
 
 
-DATA_DIR = pathlib.Path(pathlib.Path(__file__).parent.absolute(), 'tmp', 'data')
+DATA_DIR = pathlib.Path(pathlib.Path(__file__).parent.absolute(), '..', 'tmp', 'data')
 
 
 class TestCopernicusExtractor(unittest.TestCase):

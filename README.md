@@ -8,6 +8,7 @@ meteorological data repositories to extract slices of data programaticaly.
 
 - [Dependencies](#dependencies)
 - [Tests](#tests)
+- [CLI](#cli)
 
 ## Dependencies
 
@@ -29,5 +30,30 @@ Once done, at the project root directory, run the following command
 to start the testing module:
 
 ``` sh
-python tests.py
+python tests/test_lib_copernicus_marine.py
+```
+
+## CLI
+
+This package includes a command line interface to use the capabilities
+of the library without implement it in code.
+
+The CLI is named `omdepextract`, so call
+
+``` sh
+omdepextract -h
+```
+
+to show the manual.
+
+To use it, you must create an specification file with the details of
+the data to extract. See the `etc/copernicus_marine.json.example`
+for reference. You can store your custom specification files in `etc/cli-conf/`
+
+Example call for the cli:
+
+``` sh
+omdepextract etc/cli-conf/copernicus-marine.json -a get-size
+
+omdepextract etc/cli-conf/copernicus-marine.json -a=extract
 ```

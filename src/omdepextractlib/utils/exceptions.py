@@ -7,7 +7,15 @@ class ExtractionException(Exception):
   
 
   def __str__(self):
-    return f'ExtractionException: {self.message}.'
+    f_srt_list = []
+    for gf in self.generated_files:
+      f_srt_list.append(gf.__str__())
+    messages = [
+      f'Message: {self.message}',
+      f'Source log:\n{self.source_log}',
+      f'Generated files: [{",".join(f_srt_list)}]'
+    ]
+    return '\n'.join(messages)
 
 
 # NoMoreExtractionRequiredException

@@ -16,6 +16,13 @@ class GeneratedFile:
     self.description = description
     self.path = path
     self.file_size = file_size
+  
+  def __str__(self) -> str:
+    messages = [
+      f'Description: {self.description}',
+      f'Path: {self.path}'
+    ]
+    return '<' + ', '.join(messages) + '>'
 
 
 class ExtractionResult:

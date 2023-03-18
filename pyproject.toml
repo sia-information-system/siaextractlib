@@ -1,0 +1,26 @@
+# pyproject.toml
+
+[build-system]
+requires      = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omdepextractlib"
+version = "0.1.0"
+description = "Provide an easy to use API for download oceanographic data."
+readme = "README.md"
+authors = [{ name = "OMDEP", email = "180300337@ucaribe.edu.mx" }]
+keywords = ["gis", "cartography", "oceanographic", "oceanic", "etl", "extraction"]
+dependencies = [
+  "xarray >= 2022.11.0",
+  "netcdf4 >= 1.6.2",
+  "motuclient >= 3.0.0",
+  "dask >= 2022.11.1"
+]
+requires-python = ">=3.10"
+
+[project.urls]
+Homepage = "https://github.com/OMDEP/omdepextractlib"
+
+[project.scripts]
+omdepextract = "omdepextractcli.omdepextract:main"

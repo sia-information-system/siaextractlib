@@ -7,6 +7,7 @@ def read_config():
   config_path = pathlib.Path(
     pathlib.Path(__file__).parent.absolute(),
     '..',
+    '..',
     'etc',
     'config.ini')
   config = ConfigParser()

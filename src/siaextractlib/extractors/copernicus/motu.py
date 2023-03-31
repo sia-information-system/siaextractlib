@@ -1,14 +1,17 @@
 import subprocess
 import re
-import pathlib
-from omdepextractlib.utils import exceptions, metadata
+from pathlib import Path
+from siaextractlib.utils import exceptions, metadata
 import xml.dom.minidom as minidom
 from datetime import date, timedelta, datetime
 import sys
 import xarray
+import warnings
 
 
-class DatasetClient:
+# Legacy
+# Not a standard implementation.
+class CopernicusMotuExtractor:
   def __init__(
     self, 
     copernicus_user = '', 
@@ -26,6 +29,13 @@ class DatasetClient:
     sensing_frequency = '',
     verbose = False,
     max_attempts_to_compute_date_range = 50):
+      warn_message = [
+        'This extractor do not implement the standard interface for extractors,',
+        'so it may not be compatible with other extractors.',
+        'Moreover, it is not fully stable so it may fail in some cases.',
+        'Its use is discouraged.'
+      ]
+      warnings.warn(' '.join(warn_message), DeprecationWarning)
       self.copernicus_user = copernicus_user
       self.copernicus_passwd = copernicus_passwd
       self.motu_source = motu_source
@@ -80,7 +90,7 @@ class DatasetClient:
     completed_process = subprocess.run(command, stderr = subprocess.PIPE, stdout = subprocess.PIPE, universal_newlines = True)
     # completed_process = subprocess.run(command)
 
-    path_dataset = pathlib.Path(self.out_dir, out_name)
+    path_dataset = Path(self.out_dir, out_name)
 
     if self.verbose:
       print(f'File has been stored in: {path_dataset}', file=sys.stderr)
@@ -96,28 +106,28 @@ class DatasetClient:
           print('Process child "motuclient" returned a non-zero exit code.', file = sys.stderr)
           print('Deleting result file if exists.', file = sys.stderr)
         path_dataset.unlink(missing_ok = True)
-        raise exceptions.ExtractionException(
-          message = 'Process child "motuclient" returned a non-zero exit code',
-          source_log = completed_process.stdout)
+        raise exceptions.ExtractionException(messages=[
+          'Process child "motuclient" returned a non-zero exit code',
+          completed_process.stdout])
       re_invalid_dates = re.compile('\[ERROR\] 010-6')
       re_general_error = re.compile('\[ERROR\]')
       for line in completed_process.stdout.splitlines():
         m = re_invalid_dates.search(line)
         if m is not None:
-          raise exceptions.WrongExtractionArgsException(
-            message = m.group(0),
-            source_log = completed_process.stdout)
+          raise exceptions.WrongExtractionArgsException(messages=[
+            m.group(0),
+            completed_process.stdout])
         m = re_general_error.search(line)
         if m is not None:
-          raise exceptions.ExtractionException(
-            message = m.group(0),
-            source_log = completed_process.stdout)
+          raise exceptions.ExtractionException(messages=[
+            m.group(0),
+            completed_process.stdout])
     except Exception as err:
       path_dataset.unlink(missing_ok = True)
       raise err
     if self.verbose:
       print('Partial file completed.', file=sys.stderr)
-    return metadata.GeneratedFile(
+    return metadata.FileDetails(
       description = 'netcdf_dataset_part',
       path = path_dataset)
   
@@ -156,14 +166,14 @@ class DatasetClient:
     while not valid_range:
       if attempt_counter > self.max_attempts_to_compute_date_range:
         raise exceptions.ExtractionException(
-          message=f'Too many attempts: {attempt_counter}. Max allowed: {self.max_attempts_to_compute_date_range}')
+          messages=f'Too many attempts: {attempt_counter}. Max allowed: {self.max_attempts_to_compute_date_range}')
       if not by_pass_increase_factor:
         next_date_max = next_date_min + timedelta(days = 30 * self.increase_factor)
       if next_date_max > global_date_max:
         next_date_max = global_date_max
         hour_part_max = self.dates[1].split()[1]
         if next_date_min > next_date_max:
-          raise exceptions.NoMoreExtractionRequiredException('"date_min" is greater than "date_max". Extraction can be stopped.')
+          raise exceptions.EndOfDataException(messages='"date_min" is greater than "date_max". Extraction can be stopped.')
       try:
         attempt_counter += 1
         if self.verbose:
@@ -175,7 +185,7 @@ class DatasetClient:
           [f'{str(next_date_min)} {hour_part_min}', f'{str(next_date_max)} {hour_part_max}'],
           remove_file_when_finish = False)
         if self.verbose:
-          print(f'Computed file size: {file_size.size} {file_size.unit}', file = sys.stderr)
+          print(f'Computed file size: {file_size.size} {file_size.get_unit_name()}', file = sys.stderr)
         if file_size.code == '005-0':
           valid_range = True
         else:
@@ -193,14 +203,14 @@ class DatasetClient:
           print('Date range not acceptable.', file = sys.stderr)
           print('Trying to get a correct date range from error details.', file = sys.stderr)
         # print(err.source_log, file = sys.stderr)
-        if len(err.generated_files) != 0:
-          xml_path = err.generated_files[0].path
+        if len(err.files) != 0:
+          xml_path = err.files[0].path
         else:
           if self.verbose:
             print('No generated file detected. This is a critical error.', file = sys.stderr)
-          raise exceptions.WrongExtractedFileFormatException(
-            message = 'Date range could not be determinated because there is not enough information.',
-            original_exception_message = 'File with error messages for bad date range (produced by: WrongExtractedFileFormatException) is missing.')
+          raise exceptions.UnexpectedFileStructureException(messages=[
+            'Date range could not be determinated because there is not enough information.',
+            'File with error messages for bad date range (produced by: UnexpectedFileStructureException) is missing.'])
         xml_file_ref = open(xml_path)
         re_dates = re.compile('(([0123456789]{4})-([0123456789]{2})-([0123456789]{2})) (([0123456789]{2}):([0123456789]{2}):([0123456789]{2})) and values >= (([0123456789]{4})-([0123456789]{2})-([0123456789]{2})) (([0123456789]{2}):([0123456789]{2}):([0123456789]{2}))')
         for line in xml_file_ref:
@@ -271,18 +281,15 @@ class DatasetClient:
           print('Fetch successfuly completed.', file = sys.stderr)
       except exceptions.ExtractionException as err:
         # WrongExtractionArgsException
-        extraction_result = metadata.ExtractionResult(
+        extraction_result = metadata.ExtractionDetails(
           description = 'copernicus_subset',
-          logs = [
-            # 'Generated date range not valid. This is a critical error',
-            err.message,
-            err.source_log
-          ],
+          # 'Generated date range not valid. This is a critical error',
+          logs = err.messages,
           date_min = self.dates[0],
           date_max = prev_date_max)
         break
       except Exception as err:
-        extraction_result = metadata.ExtractionResult(
+        extraction_result = metadata.ExtractionDetails(
           description = 'copernicus_subset',
           logs = [
             'Unexpected extraction error',
@@ -299,9 +306,9 @@ class DatasetClient:
     curr_date_str = now.strftime('%Y-%m-%d') 
     curr_time_srd = now.strftime('%Hh-%Mm-%Ss-%fms')
     out_name = f'{self.product}-{self.service}-date-{curr_date_str}-time-{curr_time_srd}.nc'
-    dataset_file = metadata.GeneratedFile(
+    dataset_file = metadata.FileDetails(
       description=f'{self.product}-{self.service}',
-      path=pathlib.Path(self.out_dir, out_name))
+      path=Path(self.out_dir, out_name))
     # Mergin and writing dataset partials.
     dataset = None
     if n_files_downloaded > 0:
@@ -313,9 +320,9 @@ class DatasetClient:
     if extraction_result is None:
       if self.verbose:
         print('Extraction successfuly done.')
-      extraction_result = metadata.ExtractionResult(
+      extraction_result = metadata.ExtractionDetails(
         description=f'{self.product}-{self.service}',
-        generated_file=dataset_file if n_files_downloaded > 0 else None,
+        file=dataset_file if n_files_downloaded > 0 else None,
         complete=True,
         date_min=self.dates[0],
         date_max=self.dates[1])
@@ -323,7 +330,7 @@ class DatasetClient:
     else:
       if self.verbose:
         print('Some errors ocurred when executing extraction. Using partials extracted')
-      extraction_result.generated_file = dataset_file if n_files_downloaded > 0 else None
+      extraction_result.file = dataset_file if n_files_downloaded > 0 else None
     # Deleting partial files.
     for file_path in subset_paths:
       file_path.unlink(missing_ok = True)
@@ -335,6 +342,18 @@ class DatasetClient:
     return self.__get_size(
       self.dates,
       remove_file_when_finish = remove_file_when_finish)
+  
+
+  def __decode_size_unit(self, size_unit):
+    if size_unit == 'b' or size_unit == 'B':
+      return metadata.SizeUnit.BYTE
+    elif size_unit == 'kB':
+      return metadata.SizeUnit.KILO_BYTE
+    elif size_unit == 'mB':
+      return metadata.SizeUnit.MEGA_BYTE
+    elif size_unit == 'gB':
+      return metadata.SizeUnit.GIGA_BYTE
+    return size_unit
 
 
   def __get_size(self, dates, remove_file_when_finish = True):
@@ -372,7 +391,7 @@ class DatasetClient:
     # '[ INFO] Done' if everything is ok.
 
     # Read the XML if the request was ok, and return the size.
-    path_xml = pathlib.Path(self.out_dir, out_name)
+    path_xml = Path(self.out_dir, out_name)
 
     if self.verbose:
       print(f'Query result has been stored in: {path_xml}', file=sys.stderr)
@@ -383,11 +402,11 @@ class DatasetClient:
       if remove_file_when_finish:
         path_xml.unlink(missing_ok = True)
       # rise exception with stdout.
-      raise exceptions.ExtractionException(
-        message = 'Motuclient retured with a non-zero exit code', 
-        source_log = completed_process.stdout,
-        generated_files = [
-          metadata.GeneratedFile(
+      raise exceptions.ExtractionException(messages=[
+        'Motuclient retured with a non-zero exit code', 
+        completed_process.stdout],
+        files = [
+          metadata.FileDetails(
             description = 'file_size_request',
             path = path_xml)
         ]) # ExtractionException
@@ -398,11 +417,13 @@ class DatasetClient:
       if re_unknown_size.search(line) is not None:
         if remove_file_when_finish:
           path_xml.unlink(missing_ok = True)
-        raise exceptions.WrongExtractionArgsException( # WrongExtractionArgsException
-          message = 'File size unknown. Some value parameters (like dates) may be wrong.',
-          source_log = completed_process.stdout,
-          generated_files = [
-            metadata.GeneratedFile(
+        raise exceptions.WrongExtractionArgsException(
+          messages = [
+            'File size unknown. Some value parameters (like dates) may be wrong.',
+            completed_process.stdout
+          ],
+          files = [
+            metadata.FileDetails(
               description = 'file_size_request',
               path = path_xml)
           ])
@@ -414,19 +435,22 @@ class DatasetClient:
       request_size = xml_file.getElementsByTagName('requestSize')
       if self.verbose:
         print('Analysis done. Returning result.', file=sys.stderr)
-      return metadata.FileSize(
+      return metadata.RequestSize(
         size = request_size[0].attributes['size'].value,
-        unit = request_size[0].attributes['unit'].value,
+        unit = self.__decode_size_unit(request_size[0].attributes['unit'].value),
+        #unit = request_size[0].attributes['unit'].value,
         max_allowed_size = request_size[0].attributes['maxAllowedSize'].value,
         code  = request_size[0].attributes['code'].value,
         message = request_size[0].attributes['msg'].value), path_xml
     except Exception as err:
-      raise exceptions.WrongExtractedFileFormatException( # WrongExtractedFileFormatException
-        message = 'Unable to access the file size data. XML file may not have the appropriate structure.',
-        source_log = completed_process.stdout,
-        original_exception_message = str(err),
-        generated_files = [
-          metadata.GeneratedFile(
+      raise exceptions.UnexpectedFileStructureException(
+        messages = [
+          'Unable to access the file size data. XML file may not have the appropriate structure.',
+          completed_process.stdout,
+          str(err)
+        ],
+        files = [
+          metadata.FileDetails(
             description = 'file_size_request',
             path = path_xml)
         ])

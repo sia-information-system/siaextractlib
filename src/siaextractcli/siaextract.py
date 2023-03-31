@@ -3,7 +3,8 @@ import time
 import pathlib
 import json
 import argparse
-from omdepextractlib.sources import copernicus
+#from omdepextractlib.extractors.copernicus import motu
+from siaextractlib.extractors import copernicus
 
 # print log
 def plog(message, log_type='info', sep = '\n', file = sys.stderr):
@@ -47,7 +48,7 @@ def main():
   plog(f'Action -> {args.action}')
   plog('Starting process.')
   if config['data_source'] == 'copernicus-marine':
-    copernicus_marine_extractor = copernicus.DatasetClient(
+    copernicus_marine_extractor = copernicus.motu.Extractor(
       copernicus_user = config['user'],
       copernicus_passwd = config['passwd'],
       motu_source = config['motu_source'],

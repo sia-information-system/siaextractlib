@@ -324,8 +324,8 @@ class CopernicusMotuExtractor:
         description=f'{self.product}-{self.service}',
         file=dataset_file if n_files_downloaded > 0 else None,
         complete=True,
-        date_min=self.dates[0],
-        date_max=self.dates[1])
+        time_min=self.dates[0],
+        time_max=self.dates[1])
     # Else, there was an error y just return what was downloaded.
     else:
       if self.verbose:

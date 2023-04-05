@@ -7,6 +7,7 @@ import lib.general_utils as general_utils
 
 
 DATA_DIR = pathlib.Path(pathlib.Path(__file__).parent.absolute(), '..', 'tmp', 'data')
+general_utils.mkdir_r(DATA_DIR)
 
 
 class CopernicusMarine(unittest.TestCase):
@@ -117,5 +118,4 @@ class CopernicusMarine(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  general_utils.mkdir_r(DATA_DIR)
   unittest.main()

@@ -76,6 +76,7 @@ class OpendapExtractor(BaseExtractor):
     self.dataset = None
     self.filepath = None
     self.session = None
+    self.time_dim_name = 'time'
     # self.__async_connect = AsyncRunner(sync_fn=self.sync_connect)
     self.async_runner_manager.add_runner('connect', AsyncRunner(sync_fn=self.sync_connect))
   
@@ -102,7 +103,7 @@ class OpendapExtractor(BaseExtractor):
     **kwargs are forwarded to `xr.open_dataset` method.
     """
     self.log('Trying to open the remote dataset.')
-    self.close_connect()
+    self.close()
     self.session = requests.Session()
     if self.auth:
       self.session.auth = (self.auth.user, self.auth.passwd)
@@ -114,7 +115,7 @@ class OpendapExtractor(BaseExtractor):
     return self
   
 
-  def close_connect(self):
+  def close(self):
     if self.session is not None:
       self.session.close()
       self.session = None
@@ -128,6 +129,7 @@ class OpendapExtractor(BaseExtractor):
     """
     self.log('Extracting chunk of data. This can take a while.')
     subset.to_netcdf(path)
+    subset.close()
     file_details = FileDetails(description='downloaded_dataset', path=path)
     self.log(f'Extracted chunk: {file_details}')
     return file_details
@@ -169,22 +171,15 @@ class OpendapExtractor(BaseExtractor):
     self.log('Starting extraction process.')
     subset = wrangling.slice_dice(self.dataset, self.dim_constraints, self.requested_vars)
     file_details = self.fetch(subset, filepath)
-    time_min = None
-    time_max = None
-    try:
-      _time_dim = subset['time']
-      time_min = _time_dim.min().values
-      time_max = _time_dim.max().values
-    except:
-      pass
+    time_min, time_max = wrangling.get_time_bound_from_ds(dataset=subset, time_dim_name=self.time_dim_name)
     self.log('Extraction done.')
     return ExtractionDetails(
-      description='downloaded_dataset',
+      description='extraction_completed',
       file=file_details,
       complete=True,
-      date_min=time_min,
-      date_max=time_max)
+      time_min=time_min,
+      time_max=time_max)
   
 
   def __del__(self):
-    self.close_connect()
+    self.close()

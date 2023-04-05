@@ -1,12 +1,14 @@
 # Standard
 import unittest
 import time
-from pathlib import Path
+import sys
 import inspect
+from pathlib import Path
+from datetime import datetime
 # Third party
 
 # Own
-from siaextractlib.extractors import OpendapExtractor
+from siaextractlib.extractors import OpendapExtractor, CopernicusOpendapExtractor
 from siaextractlib.utils.auth import SimpleAuth
 from siaextractlib.utils.log import LogStream
 from siaextractlib.utils.exceptions import ExtractionException
@@ -16,6 +18,7 @@ from siaextractlib.utils.metadata import SizeUnit, ExtractionDetails
 from lib import general_utils
 
 DATA_DIR = Path(Path(__file__).parent.absolute(), '..', 'tmp', 'data')
+general_utils.mkdir_r(DATA_DIR)
 
 """
 # LogStream
@@ -68,11 +71,46 @@ print('-- End of script.')
 
 """
 
-class TestOpendap(unittest.TestCase):
+
+class OpendapTestCase(unittest.TestCase):
+  def __init__(self, methodName: str = "runTest") -> None:
+    super().__init__(methodName)
+    self.dataset_name = '__dataset_name__.nc'
+
+
+  def _connect_success_handler(self, this_extractor: OpendapExtractor):
+    this_extractor.extract(
+      filepath=Path(DATA_DIR, self.dataset_name),
+      success_callback=self._extract_success_handler,
+      failure_callback=self._failure_handler)
+    
+    # The runner id is the asynchronous method name.
+    # Run the .wait(...) method will block the current thread.
+    # In most cases, run this method won't be needed.
+    this_extractor.async_runner_manager.get_runner('extract').wait()
+    # Alternatively, extractor.wait(...) can be used for extractor.extract(...)
+    # as a short cut of the above way.
+
+    # Always close the conexion when the extractor is not needed any more.
+    this_extractor.close()
+    
+
+  def _extract_success_handler(self, extraction_details):
+    print(extraction_details, file=sys.stderr)
+    self.assertIsInstance(extraction_details, ExtractionDetails)
+
+
+  def _failure_handler(self, e: BaseException):
+    print('---- ERROR HANDLER:', file=sys.stderr)
+    print(e, file=sys.stderr)
+    self.assertFalse( issubclass(type(e), BaseException) )
+
+
+class TestOpendap(OpendapTestCase):
   def test_size_query(self):
-    print(f'---- Starting: {inspect.currentframe().f_code.co_name}')
+    print(f'---- Starting: {inspect.currentframe().f_code.co_name}', file=sys.stderr)
     def show_log(data):
-      print(data, end='')
+      print(data, end='', file=sys.stderr)
     log_stream = LogStream(callback=show_log)
 
     extractor = OpendapExtractor(
@@ -89,15 +127,18 @@ class TestOpendap(unittest.TestCase):
       log_stream=log_stream,
       verbose=True)
     request_size = extractor.sync_connect().get_size(SizeUnit.MEGA_BYTE)
-    print(request_size)
-    extractor.close_connect()
+    print(request_size, file=sys.stderr)
+    extractor.close()
     self.assertIsNotNone(request_size)
 
 
   def test_4mb_donwload_sync(self):
-    print(f'---- Starting: {inspect.currentframe().f_code.co_name}')
+    _id = f'{self.__class__.__name__}_{inspect.currentframe().f_code.co_name}'
+    datetime_str = datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')
+    ds_name = f'{_id}_{datetime_str}.nc'
+    print(f'---- Starting: {_id}', file=sys.stderr)
     def show_log(data):
-      print(data, end='')
+      print(data, end='', file=sys.stderr)
     log_stream = LogStream(callback=show_log)
 
     extractor = OpendapExtractor(
@@ -113,16 +154,19 @@ class TestOpendap(unittest.TestCase):
       requested_vars=['uo'],
       log_stream=log_stream,
       verbose=True)
-    extract_details = extractor.sync_connect().sync_extract(Path(DATA_DIR, 'ds_1.nc'))
-    print(extract_details)
-    extractor.close_connect()
+    extract_details = extractor.sync_connect().sync_extract(Path(DATA_DIR, ds_name))
+    print(extract_details, file=sys.stderr)
+    extractor.close()
     self.assertIsNotNone(extract_details)
 
 
   def test_4mb_donwload_async(self):
-    print(f'---- Starting: {inspect.currentframe().f_code.co_name}')
+    _id = f'{self.__class__.__name__}_{inspect.currentframe().f_code.co_name}'
+    datetime_str = datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')
+    ds_name = f'{_id}_{datetime_str}.nc'
+    print(f'---- Starting: {_id}', file=sys.stderr)
     def show_log(data):
-      print(data, end='')
+      print(data, end='', file=sys.stderr)
     log_stream = LogStream(callback=show_log)
 
     extractor = OpendapExtractor(
@@ -139,10 +183,11 @@ class TestOpendap(unittest.TestCase):
       log_stream=log_stream,
       verbose=True)
     # extract_details = extractor.sync_connect().sync_extract('ds.nc')
-    
+
+    self.dataset_name = ds_name
     extractor.connect(
-      success_callback=self._4mb_donwload_async_connect_success_handler,
-      failure_callback=self._4mb_donwload_failure_handler)
+      success_callback=self._connect_success_handler,
+      failure_callback=self._failure_handler)
     
     # The runner id is the asynchronous method name.
     # Run the .wait(...) method will block the current thread.
@@ -150,31 +195,90 @@ class TestOpendap(unittest.TestCase):
     extractor.async_runner_manager.get_runner('connect').wait()
 
 
-  def _4mb_donwload_async_connect_success_handler(self, this_extractor: OpendapExtractor):
-    this_extractor.extract(
-      filepath=Path(DATA_DIR, 'ds_2.nc'),
-      success_callback=self._4mb_donwload_async_extract_success_handler,
-      failure_callback=self._4mb_donwload_failure_handler)
+class TestCopernicusOpendap(OpendapTestCase):
+  def test_4mb_donwload_sync(self):
+    _id = f'{self.__class__.__name__}_{inspect.currentframe().f_code.co_name}'
+    datetime_str = datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')
+    ds_name = f'{_id}_{datetime_str}.nc'
+    print(f'---- Starting: {_id}', file=sys.stderr)
+    def show_log(data):
+      print(data, end='', file=sys.stderr)
+    
+    log_stream = LogStream(callback=show_log)
+
+    extractor = CopernicusOpendapExtractor(
+      opendap_url='https://nrt.cmems-du.eu/thredds/dodsC/cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m',
+      auth=SimpleAuth(user='amontejo', passwd='MyCopernicusAccount25;'),
+      dim_constraints={
+        #'time': ['2023-04-06'],
+        'time': slice('2023-03-06', '2023-04-06'),
+        'depth': [0.49],
+        'longitude': slice(-87.21394123899096, -86.14119796245421),
+        'longitude': slice(20.216928148926932, 21.687290554990795)
+      },
+      requested_vars=['uo'],
+      log_stream=log_stream,
+      verbose=True)
+    extract_details = extractor.sync_connect().sync_extract(Path(DATA_DIR, ds_name))
+    print(extract_details, file=sys.stderr)
+    extractor.close()
+    self.assertIsNotNone(extract_details)
+  
+  
+  def test_1_7_gb_download_sync(self):
+    _id = f'{self.__class__.__name__}_{inspect.currentframe().f_code.co_name}'
+    datetime_str = datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')
+    ds_name = f'{_id}_{datetime_str}.nc'
+    print(f'---- Starting: {_id}', file=sys.stderr)
+    def show_log(data):
+      print(data, end='', file=sys.stderr)
+    log_stream = LogStream(callback=show_log)
+
+    extractor = CopernicusOpendapExtractor(
+      opendap_url='https://nrt.cmems-du.eu/thredds/dodsC/cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m',
+      auth=SimpleAuth(user='amontejo', passwd='MyCopernicusAccount25;'),
+      dim_constraints={
+        'time': slice('2020-11-01', '2020-12-20'),
+        'depth': [0.494025]
+      },
+      requested_vars=['uo'],
+      log_stream=log_stream,
+      verbose=True)
+    extract_details = extractor.sync_connect().sync_extract(Path(DATA_DIR, ds_name))
+    print(extract_details, file=sys.stderr)
+    extractor.close()
+    self.assertIsNotNone(extract_details)
+  
+
+  def test_1_7_gb_download_async(self):
+    _id = f'{self.__class__.__name__}_{inspect.currentframe().f_code.co_name}'
+    datetime_str = datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')
+    ds_name = f'{_id}_{datetime_str}.nc'
+    print(f'---- Starting: {_id}', file=sys.stderr)
+    def show_log(data):
+      print(data, end='', file=sys.stderr)
+    log_stream = LogStream(callback=show_log)
+
+    extractor = CopernicusOpendapExtractor(
+      opendap_url='https://nrt.cmems-du.eu/thredds/dodsC/cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m',
+      auth=SimpleAuth(user='amontejo', passwd='MyCopernicusAccount25;'),
+      dim_constraints={
+        'time': slice('2020-11-01', '2020-12-20'),
+        'depth': [0.494025]
+      },
+      requested_vars=['uo'],
+      log_stream=log_stream,
+      verbose=True)
+    
+    self.dataset_name = ds_name
+    extractor.connect(
+      success_callback=self._connect_success_handler,
+      failure_callback=self._failure_handler)
     
     # The runner id is the asynchronous method name.
     # Run the .wait(...) method will block the current thread.
     # In most cases, run this method won't be needed.
-    this_extractor.async_runner_manager.get_runner('extract').wait()
-    # Alternatively, extractor.wait(...) can be used for extractor.extract(...)
-    # as a short cut of the above way.
-
-    # Always close the conexion when the extractor is not needed any more.
-    this_extractor.close_connect()
-    
-
-  def _4mb_donwload_async_extract_success_handler(self, extraction_details):
-    print(extraction_details)
-    self.assertIsInstance(extraction_details, ExtractionDetails)
-
-
-  def _4mb_donwload_failure_handler(self, e: BaseException):
-    print(e)
-    self.assertFalse( issubclass(type(e), BaseException) )
+    extractor.async_runner_manager.get_runner('connect').wait()
 
 
 if __name__ == '__main__':

@@ -52,6 +52,11 @@ class FileDetails:
       f'Path: {self.path}'
     ]
     return '<' + ', '.join(messages) + '>'
+  
+
+  def unlink(self):
+    self.path.unlink()
+    self.path = None
 
 
 class ExtractionDetails:
@@ -61,16 +66,16 @@ class ExtractionDetails:
     logs: list[str] = [],
     file: FileDetails = None,
     complete: bool = False,
-    date_min: datetime | str = None,
-    date_max: datetime | str = None
+    time_min: datetime | str = None,
+    time_max: datetime | str = None
   ):
     self.description = description
     self.file = file
     self.complete = complete
-    self.date_min = date_min
-    self.date_max =  date_max
+    self.time_min = time_min
+    self.time_max =  time_max
     self.logs = logs
   
 
   def __str__(self):
-    return f'Description: {self.description}. Completed: {self.complete}. Date min: {self.date_min}. Date max: {self.date_max}. Logs: {self.logs}.'
+    return f'Description: {self.description}. Completed: {self.complete}. Time min: {self.time_min}. Time max: {self.time_max}. Logs: {self.logs}.'

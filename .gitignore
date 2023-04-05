@@ -9,6 +9,7 @@ dist
 build
 src/siaextractlib.egg-info
 src/siaextractlib.egg-info
+src/*.egg-info
 
 # Configuration files
 etc/config.ini

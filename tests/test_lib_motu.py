@@ -1,5 +1,5 @@
 import pathlib
-from omdepextractlib.sources import copernicus
+from siaextractlib import extractors
 import time
 import sys
 import unittest
@@ -7,15 +7,16 @@ import lib.general_utils as general_utils
 
 
 DATA_DIR = pathlib.Path(pathlib.Path(__file__).parent.absolute(), '..', 'tmp', 'data')
+general_utils.mkdir_r(DATA_DIR)
 
 
-class TestCopernicusExtractor(unittest.TestCase):
+class CopernicusMarine(unittest.TestCase):
 
   def test_4bg_date_range_forward(self):
     print('\n--- Starting 4GB date range forward test. ---', file=sys.stderr)
     time_start = time.time()
     config = general_utils.read_config()
-    cop = copernicus.DatasetClient(
+    cop = extractors.CopernicusMotuExtractor(
       copernicus_user = config['DEFAULT']['COPERNICUS_USER'],
       copernicus_passwd = config['DEFAULT']['COPERNICUS_PASSWD'],
       motu_source = 'https://nrt.cmems-du.eu/motu-web/Motu',
@@ -53,7 +54,7 @@ class TestCopernicusExtractor(unittest.TestCase):
     time_start = time.time()
     config = general_utils.read_config()
     extraction_result = None
-    cop = copernicus.DatasetClient(
+    cop = extractors.CopernicusMotuExtractor(
       copernicus_user = config['DEFAULT']['COPERNICUS_USER'],
       copernicus_passwd = config['DEFAULT']['COPERNICUS_PASSWD'],
       motu_source = 'https://nrt.cmems-du.eu/motu-web/Motu',
@@ -87,7 +88,7 @@ class TestCopernicusExtractor(unittest.TestCase):
     time_start = time.time()
     config = general_utils.read_config()
     extraction_result = None
-    cop = copernicus.DatasetClient(
+    cop = extractors.CopernicusMotuExtractor(
       copernicus_user = config['DEFAULT']['COPERNICUS_USER'],
       copernicus_passwd = config['DEFAULT']['COPERNICUS_PASSWD'],
       motu_source = 'https://nrt.cmems-du.eu/motu-web/Motu',
@@ -117,5 +118,4 @@ class TestCopernicusExtractor(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  general_utils.mkdir_r(DATA_DIR)
   unittest.main()

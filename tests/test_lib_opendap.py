@@ -108,7 +108,11 @@ class OpendapTestCase(unittest.TestCase):
 
 class TestOpendap(OpendapTestCase):
   def test_size_query(self):
-    print(f'---- Starting: {inspect.currentframe().f_code.co_name}', file=sys.stderr)
+    _id = f'{self.__class__.__name__}_{inspect.currentframe().f_code.co_name}'
+    datetime_str = datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')
+    ds_name = f'{_id}_{datetime_str}.nc'
+    print(f'---- Starting: {_id} at {datetime_str}', file=sys.stderr)
+    
     def show_log(data):
       print(data, end='', file=sys.stderr)
     log_stream = LogStream(callback=show_log)
@@ -130,13 +134,47 @@ class TestOpendap(OpendapTestCase):
     print(request_size, file=sys.stderr)
     extractor.close()
     self.assertIsNotNone(request_size)
+  
+
+  def test_access_dims_vars(self):
+    _id = f'{self.__class__.__name__}_{inspect.currentframe().f_code.co_name}'
+    datetime_str = datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')
+    ds_name = f'{_id}_{datetime_str}.nc'
+    print(f'---- Starting: {_id} at {datetime_str}', file=sys.stderr)
+
+    def show_log(data):
+      print(data, end='', file=sys.stderr)
+    log_stream = LogStream(callback=show_log)
+
+    extractor = OpendapExtractor(
+      opendap_url='https://nrt.cmems-du.eu/thredds/dodsC/cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m',
+      auth=SimpleAuth(user='amontejo', passwd='MyCopernicusAccount25;'),
+      dim_constraints={
+        #'time': ['2023-04-06'],
+        'time': slice('2023-03-06', '2023-04-06'),
+        'depth': [0.49],
+        'longitude': slice(-87.21394123899096, -86.14119796245421),
+        'longitude': slice(20.216928148926932, 21.687290554990795)
+      },
+      requested_vars=['uo'],
+      log_stream=log_stream,
+      verbose=True)
+    extractor.sync_connect()
+    dims = extractor.get_dims()
+    print('---- dims:', dims, file=sys.stderr)
+    self.assertIsInstance(dims, list)
+    vars = extractor.get_vars()
+    print('---- vars:', vars, file=sys.stderr)
+    self.assertIsInstance(vars, list)
+    extractor.close()
 
 
   def test_4mb_donwload_sync(self):
     _id = f'{self.__class__.__name__}_{inspect.currentframe().f_code.co_name}'
     datetime_str = datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')
     ds_name = f'{_id}_{datetime_str}.nc'
-    print(f'---- Starting: {_id}', file=sys.stderr)
+    print(f'---- Starting: {_id} at {datetime_str}', file=sys.stderr)
+
     def show_log(data):
       print(data, end='', file=sys.stderr)
     log_stream = LogStream(callback=show_log)
@@ -164,7 +202,8 @@ class TestOpendap(OpendapTestCase):
     _id = f'{self.__class__.__name__}_{inspect.currentframe().f_code.co_name}'
     datetime_str = datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')
     ds_name = f'{_id}_{datetime_str}.nc'
-    print(f'---- Starting: {_id}', file=sys.stderr)
+    print(f'---- Starting: {_id} at {datetime_str}', file=sys.stderr)
+
     def show_log(data):
       print(data, end='', file=sys.stderr)
     log_stream = LogStream(callback=show_log)
@@ -200,7 +239,8 @@ class TestCopernicusOpendap(OpendapTestCase):
     _id = f'{self.__class__.__name__}_{inspect.currentframe().f_code.co_name}'
     datetime_str = datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')
     ds_name = f'{_id}_{datetime_str}.nc'
-    print(f'---- Starting: {_id}', file=sys.stderr)
+    print(f'---- Starting: {_id} at {datetime_str}', file=sys.stderr)
+
     def show_log(data):
       print(data, end='', file=sys.stderr)
     
@@ -229,7 +269,8 @@ class TestCopernicusOpendap(OpendapTestCase):
     _id = f'{self.__class__.__name__}_{inspect.currentframe().f_code.co_name}'
     datetime_str = datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')
     ds_name = f'{_id}_{datetime_str}.nc'
-    print(f'---- Starting: {_id}', file=sys.stderr)
+    print(f'---- Starting: {_id} at {datetime_str}', file=sys.stderr)
+
     def show_log(data):
       print(data, end='', file=sys.stderr)
     log_stream = LogStream(callback=show_log)
@@ -254,7 +295,8 @@ class TestCopernicusOpendap(OpendapTestCase):
     _id = f'{self.__class__.__name__}_{inspect.currentframe().f_code.co_name}'
     datetime_str = datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')
     ds_name = f'{_id}_{datetime_str}.nc'
-    print(f'---- Starting: {_id}', file=sys.stderr)
+    print(f'---- Starting: {_id} at {datetime_str}', file=sys.stderr)
+    
     def show_log(data):
       print(data, end='', file=sys.stderr)
     log_stream = LogStream(callback=show_log)

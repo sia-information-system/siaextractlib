@@ -104,15 +104,19 @@ class OpendapExtractor(BaseExtractor):
     """
     self.log('Trying to open the remote dataset.')
     self.close()
-    self.session = requests.Session()
-    if self.auth:
-      self.session.auth = (self.auth.user, self.auth.passwd)
-    opendap_conn = xr.backends.PydapDataStore.open(
-      self.opendap_url,
-      session=self.session)
-    self.dataset = xr.open_dataset(opendap_conn, **kwargs)
-    self.log('Dataset opened.')
-    return self
+    try:
+      self.session = requests.Session()
+      if self.auth:
+        self.session.auth = (self.auth.user, self.auth.passwd)
+      opendap_conn = xr.backends.PydapDataStore.open(
+        self.opendap_url,
+        session=self.session)
+      self.dataset = wrangling.open_dataset(opendap_conn, **kwargs)
+      self.log('Dataset opened.')
+      return self
+    except BaseException as err:
+      self.close()
+      raise err.with_traceback(err.__traceback__)
   
 
   def close(self):

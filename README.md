@@ -47,6 +47,12 @@ in the package root directory (where de `pyproject.toml` file is located):
 pip install --editable .
 ```
 
+### Required dependencies to be manual installed
+
+This package requires the following dependencies to be manually installed from source:
+
+* Pydap: https://github.com/pydap/pydap
+
 ## Tests
 
 **NOTE:** You need to first create and fill the `etc/config.ini` file

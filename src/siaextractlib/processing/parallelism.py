@@ -51,7 +51,7 @@ class AsyncRunner:
       if result is None:
         self.success_callback()
         return
-      if type(result) is not tuple or type(result) is not list:
+      if type(result) is not tuple:
         result = tuple([result])
       self.success_callback(*result)
     except BaseException as e:

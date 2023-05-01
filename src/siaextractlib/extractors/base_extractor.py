@@ -111,7 +111,7 @@ class OpendapExtractor(BaseExtractor):
       opendap_conn = xr.backends.PydapDataStore.open(
         self.opendap_url,
         session=self.session)
-      self.dataset = wrangling.open_dataset(opendap_conn, **kwargs)
+      self.dataset = wrangling.open_dataset(opendap_conn, log_stream=self.log_stream, **kwargs)
       self.log('Dataset opened.')
       return self
     except BaseException as err:

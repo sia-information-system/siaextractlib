@@ -3,16 +3,21 @@ import re
 import sys
 # Third party
 import xarray as xr
+import numpy as np
 from cftime import num2pydate
 
+
 def slice_dice(
-  dataset: xr.Dataset,
-  dim_constraints: dict,
-  var: str | list = None
-) -> xr.Dataset | xr.DataArray:
+  dataset: xr.DataArray,
+  dim_constraints: dict[str, slice|list],
+  var: str | list = None,
+  squeeze = True
+) -> xr.DataArray:
   """
-  Make a subset by dimension contraints and a selected (and optional)
+  Makes a subset by dimension contraints and a selected (and optional)
   list of variables. A single variable name can be passed as a string.
+  The dimensions take the nearest values to the specified. Unique values
+  in dimensions are warranteed.
   """
   # Initializing.
   subset = dataset
@@ -27,13 +32,65 @@ def slice_dice(
     if type(dim_constraints[dim_name]) is slice:
       constraints_w_slices[dim_name] = dim_constraints[dim_name]
     else:
-      constraints_w_no_slices[dim_name] = dim_constraints[dim_name]
+      if type(dim_constraints[dim_name]) is list:
+        constraints_w_no_slices[dim_name] = dim_constraints[dim_name]
+      else:
+        # Make it a list.
+        constraints_w_no_slices[dim_name] = [ dim_constraints[dim_name] ]
   
   # Apply dimension constraints
-  subset = subset.sel(constraints_w_no_slices, method = 'nearest').squeeze()
-  subset = subset.sel(constraints_w_slices).squeeze()
+  subset = subset.sel(constraints_w_no_slices, method = 'nearest')#.squeeze()
+  subset = subset.sel(constraints_w_slices)#.squeeze()
+
+  # Ensure unique values in constraints.
+  dims_unique_values = get_dim_unique_values(dataset=subset)
+  _dim_constraints = {}
+  for dim_name in dim_constraints.keys():
+    _dim_constraints[dim_name] = dims_unique_values[dim_name]
+
+  # Subsetting again but with unique values in dimensions.
+  subset = dataset
+  # Selecting variables of interest.
+  if var is not None:
+    subset = dataset[var]
+  if squeeze:
+    subset = subset.sel(_dim_constraints).squeeze()
+  else:
+    subset = subset.sel(_dim_constraints)
 
   return subset
+
+
+# def slice_dice(
+#   dataset: xr.Dataset,
+#   dim_constraints: dict,
+#   var: str | list = None
+# ) -> xr.Dataset | xr.DataArray:
+#   """
+#   Make a subset by dimension contraints and a selected (and optional)
+#   list of variables. A single variable name can be passed as a string.
+#   """
+#   # Initializing.
+#   subset = dataset
+
+#   # Selecting variables of interest.
+#   if var is not None:
+#     subset = dataset[var]
+  
+#   constraints_w_slices = {}
+#   constraints_w_no_slices = {}
+#   for dim_name in dim_constraints.keys():
+#     if type(dim_constraints[dim_name]) is slice:
+#       constraints_w_slices[dim_name] = dim_constraints[dim_name]
+#     else:
+#       constraints_w_no_slices[dim_name] = dim_constraints[dim_name]
+  
+#   # Apply dimension constraints
+#   subset = subset.sel(constraints_w_no_slices, method = 'nearest').squeeze()
+#   subset = subset.sel(constraints_w_slices).squeeze()
+
+#   return subset
+
 
 # Standard for time dimension in NetCDF files: https://cfconventions.org/Data/cf-conventions/cf-conventions-1.7/build/ch04s04.html 
 def get_time_dim(dataset: xr.Dataset, time_dim_name: str = 'time') -> xr.DataArray | None:
@@ -59,6 +116,13 @@ def get_dims(dataset: xr.Dataset) -> list[str]:
 
 def get_vars(dataset: xr.Dataset) -> list[str]:
   return list(dataset.data_vars)
+
+
+def get_dim_unique_values(dataset: xr.Dataset):
+  dim_values = {}
+  for dim in get_dims(dataset=dataset):
+    dim_values[dim] = np.unique(dataset[dim].data)
+  return dim_values
 
 
 def is_time_dim(dataset: xr.Dataset, dim_name: str):

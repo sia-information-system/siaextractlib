@@ -141,7 +141,7 @@ class OpendapExtractor(BaseExtractor):
 
   def get_size(self, unit: SizeUnit = SizeUnit.BYTE) -> RequestSize:
     self.verify_safety_for_processing()
-    subset = wrangling.slice_dice(self.dataset, self.dim_constraints, self.requested_vars)
+    subset = wrangling.slice_dice(self.dataset, self.dim_constraints, self.requested_vars, squeeze=False)
     rsize = RequestSize()
     if unit == SizeUnit.KILO_BYTE:
       rsize.unit = SizeUnit.KILO_BYTE
@@ -173,7 +173,7 @@ class OpendapExtractor(BaseExtractor):
   def sync_extract(self, filepath: Path | str) -> ExtractionDetails:
     self.verify_safety_for_processing()
     self.log('Starting extraction process.')
-    subset = wrangling.slice_dice(self.dataset, self.dim_constraints, self.requested_vars)
+    subset = wrangling.slice_dice(self.dataset, self.dim_constraints, self.requested_vars, squeeze=False)
     file_details = self.fetch(subset, filepath)
     time_min, time_max = wrangling.get_time_bound_from_ds(dataset=subset, time_dim_name=self.time_dim_name)
     self.log('Extraction done.')

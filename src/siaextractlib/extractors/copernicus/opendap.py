@@ -78,7 +78,7 @@ class CopernicusOpendapExtractor(OpendapExtractor):
     #  start_index = end_index + 1
     
     # Computing parameters.
-    subset = wrangling.slice_dice(self.dataset, self.dim_constraints, self.requested_vars)
+    subset = wrangling.slice_dice(self.dataset, self.dim_constraints, self.requested_vars, squeeze=False)
     time_arr = wrangling.get_time_dim(subset, time_dim_name=self.time_dim_name).values
     request_size = self.get_size(SizeUnit.MEGA_BYTE).size
     n_blocks = np.ceil(request_size / req_max_size)
@@ -108,7 +108,7 @@ class CopernicusOpendapExtractor(OpendapExtractor):
           break # Dates out of range.
       # Subsetting
       constraints[self.time_dim_name] = slice(time_arr[start_index], time_arr[end_index])
-      subset = wrangling.slice_dice(self.dataset, constraints, self.requested_vars)
+      subset = wrangling.slice_dice(self.dataset, constraints, self.requested_vars, squeeze=False)
       self.log(f'Extracting block: number={block_count}; start_index={start_index}; end_index={end_index}; constraints={constraints}.')
       file_details = self.fetch(subset, Path(download_dir, tmp_filename))
       self.tmp_files.append(file_details)

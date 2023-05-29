@@ -1,6 +1,6 @@
-# OMDEPEXTRACTLIB
+# SIAEXTRACTLIB
 
-Python library as part of the OMDEP project. Its goal is to provide
+Python library as part of the SIA project. Its goal is to provide
 an easy to use interface that connects with some open oceanic and
 meteorological data repositories to extract slices of data programaticaly.
 
@@ -17,12 +17,7 @@ meteorological data repositories to extract slices of data programaticaly.
 
 **NOTE**: If you want to use this repository for development,
 create a virtual environment named `venv` in the root directory
-and install the required dependencies in there.
-
-- xarray
-- netCDF4
-- motuclient
-- Dask
+and install the package in there.
 
 ## Install
 
@@ -47,12 +42,6 @@ in the package root directory (where de `pyproject.toml` file is located):
 pip install --editable .
 ```
 
-### Required dependencies to be manual installed
-
-This package requires the following dependencies to be manually installed from source:
-
-* Pydap: https://github.com/pydap/pydap
-
 ## Tests
 
 **NOTE:** You need to first create and fill the `etc/config.ini` file
@@ -62,18 +51,21 @@ Once done, at the project root directory, run the following command
 to start the testing module:
 
 ``` sh
-python tests/test_lib_copernicus_marine.py
+python tests/test_lib_opendap.py
 ```
+
+Tests are written with `unittest` framework, so alternative ways of run the
+test are described in its [documentation](https://docs.python.org/3/library/unittest.html).
 
 ## CLI
 
 This package includes a command line interface to use the capabilities
 of the library without implement it in code.
 
-The CLI is named `omdepextract`, so call
+The CLI is named `siaextract`, so call
 
 ``` sh
-omdepextract -h
+siaextract -h
 ```
 
 to show the manual.
@@ -85,7 +77,7 @@ for reference. You can store your custom specification files in `etc/cli-conf/`
 Example call for the cli:
 
 ``` sh
-omdepextract etc/cli-conf/copernicus-marine.json -a get-size
+siaextract etc/cli-conf/copernicus-marine.json -a get-size
 
-omdepextract etc/cli-conf/copernicus-marine.json -a=extract
+siaextract etc/cli-conf/copernicus-marine.json -a=extract
 ```

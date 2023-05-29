@@ -134,7 +134,7 @@ class OpendapExtractor(BaseExtractor):
     self.log('Extracting chunk of data. This can take a while.')
     subset.to_netcdf(path)
     subset.close()
-    file_details = FileDetails(description='downloaded_dataset', path=path)
+    file_details = FileDetails(description='dataset', path=path)
     self.log(f'Extracted chunk: {file_details}')
     return file_details
 
@@ -178,7 +178,7 @@ class OpendapExtractor(BaseExtractor):
     time_min, time_max = wrangling.get_time_bound_from_ds(dataset=subset, time_dim_name=self.time_dim_name)
     self.log('Extraction done.')
     return ExtractionDetails(
-      description='extraction_completed',
+      description='dataset',
       file=file_details,
       complete=True,
       time_min=time_min,

@@ -12,17 +12,19 @@ readme = "README.md"
 authors = [{ name = "SIA", email = "180300337@ucaribe.edu.mx" }]
 keywords = ["gis", "cartography", "oceanographic", "oceanic", "etl", "extraction"]
 dependencies = [
-  "xarray >= 2022.11.0",
-  "netcdf4 >= 1.6.2",
+  "xarray >= 2023.5.0",
+  "netcdf4 == 1.6.2",
   "motuclient >= 3.0.0",
   "dask >= 2022.11.1",
   "cftime >= 1.6.2",
-  "requests >= 2.28.2"
+  "requests >= 2.28.2",
+  "pydap >= 3.4.1",
+  "WebOb >= 1.8.7"
 ]
 requires-python = ">=3.10"
 
 [project.urls]
-Homepage = "https://github.com/OMDEP/omdepextractlib"
+Homepage = "https://github.com/sia-information-system/siaextractlib"
 
 [project.scripts]
 siaextract = "siaextractcli.siaextract:main"

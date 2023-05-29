@@ -3,8 +3,7 @@ import time
 import pathlib
 import json
 import argparse
-#from omdepextractlib.extractors.copernicus import motu
-from siaextractlib.extractors import copernicus
+from siaextractlib.extractors.copernicus.motu import CopernicusMotuExtractor
 
 # print log
 def plog(message, log_type='info', sep = '\n', file = sys.stderr):
@@ -15,9 +14,9 @@ def plog(message, log_type='info', sep = '\n', file = sys.stderr):
 
 def setup():
   arg_parser = argparse.ArgumentParser(
-    prog = 'omdepextract',
-    description = 'Executes the OMDEP extractor engine based on a given specification file.',
-    epilog = 'OMDEP Project.')
+    prog = 'siaextract',
+    description = 'Executes the SIA extractor engine based on a given specification file.',
+    epilog = 'SIA Project.')
   
   arg_parser.add_argument('filename',
     help='Name or path to the specification file.')
@@ -48,7 +47,7 @@ def main():
   plog(f'Action -> {args.action}')
   plog('Starting process.')
   if config['data_source'] == 'copernicus-marine':
-    copernicus_marine_extractor = copernicus.motu.Extractor(
+    copernicus_marine_extractor = CopernicusMotuExtractor(
       copernicus_user = config['user'],
       copernicus_passwd = config['passwd'],
       motu_source = config['motu_source'],

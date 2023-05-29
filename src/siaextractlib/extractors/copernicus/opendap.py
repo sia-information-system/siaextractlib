@@ -1,6 +1,8 @@
 # Standard
 import sys
 import re
+import time
+import traceback
 from pathlib import Path
 from datetime import datetime
 # Thrid party
@@ -22,7 +24,7 @@ class CopernicusOpendapExtractor(OpendapExtractor):
     dim_constraints: dict[str, slice | list] = None,
     requested_vars: list[str] = None,
     log_stream=sys.stderr,
-    max_attempts: int = 20,
+    max_attempts: int = 5,
     verbose: bool = False
   ) -> None:
     super().__init__(
@@ -79,9 +81,10 @@ class CopernicusOpendapExtractor(OpendapExtractor):
     
     # Computing parameters.
     subset = wrangling.slice_dice(self.dataset, self.dim_constraints, self.requested_vars, squeeze=False)
+    self.log('ping')
     time_arr = wrangling.get_time_dim(subset, time_dim_name=self.time_dim_name).values
     request_size = self.get_size(SizeUnit.MEGA_BYTE).size
-    n_blocks = np.ceil(request_size / req_max_size)
+    n_blocks = int(np.ceil(request_size / req_max_size))
     dim_time_len = len(time_arr)
     block_size = int(np.ceil(dim_time_len / n_blocks))
     start_index = 0
@@ -94,11 +97,13 @@ class CopernicusOpendapExtractor(OpendapExtractor):
     download_dir = filepath.parent.absolute()
     done = False
     constraints = self.dim_constraints
-    block_count = 1
+    block_count = 0
+    extraction_completed = True
     while not done:
       # Tmp file name
-      datetime_str = datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')
-      tmp_filename = f'tmp_dataset_{datetime_str}.nc'
+      # datetime_str = datetime.now().strftime('%Y-%m-%d_%H:%M:%S.%f')
+      timestamp = time.time()
+      tmp_filename = f'tmp_dataset_{timestamp}.nc'
       # Computing date range
       end_index = start_index + block_size
       if end_index >= dim_time_len:
@@ -109,15 +114,35 @@ class CopernicusOpendapExtractor(OpendapExtractor):
       # Subsetting
       constraints[self.time_dim_name] = slice(time_arr[start_index], time_arr[end_index])
       subset = wrangling.slice_dice(self.dataset, constraints, self.requested_vars, squeeze=False)
-      self.log(f'Extracting block: number={block_count}; start_index={start_index}; end_index={end_index}; constraints={constraints}.')
-      file_details = self.fetch(subset, Path(download_dir, tmp_filename))
-      self.tmp_files.append(file_details)
-      # Adjusting time index.
-      start_index = end_index + 1
-      # Other adjustments.
-      block_count += 1
+      file_details = None
+      block_attempt = 1
+      block_completed = False
+      while block_attempt <= self.max_attempts and not block_completed:
+        self.log(f'Extracting block: number={block_count + 1}/{n_blocks}; start_index={start_index}; end_index={end_index}; constraints={constraints}; attempt={block_attempt}/{self.max_attempts}.')
+        try:
+          file_details = self.fetch(subset, Path(download_dir, tmp_filename))
+          block_completed = True
+        except Exception as err:
+          self.log('An error has occurred while fetching block:')
+          traceback.print_exception(err, file=self.log_stream)
+          self.log('Retrying.')
+          block_attempt += 1
+      if block_completed:
+        self.tmp_files.append(file_details)
+        # Adjusting time index.
+        start_index = end_index + 1
+        # Other adjustments.
+        block_count += 1
+      else:
+        self.log('Maximum number of attempts was reached for a block extraction. Stopping extraction.')
+        self.log(f'Blocks extracted: {block_count}/{n_blocks}.')
+        done = True
+        extraction_completed = False
     # Merging files.
-    self.log('Extraction done. Merging files.')
+    self.log('Extraction done.')
+    if not len(self.tmp_files):
+      raise ExtractionException(messages='Maximum number of attempts was reached for the extraction of the first block. No data was extracted.')
+    self.log('Merging blocks.')
     fielpaths = [ f.path for f in self.tmp_files ]
     dataset = xr.open_mfdataset(fielpaths, combine = 'by_coords')
     dataset.to_netcdf(filepath)
@@ -130,6 +155,6 @@ class CopernicusOpendapExtractor(OpendapExtractor):
     # Return data.
     self.log('Extraction successfully completed.')
     return ExtractionDetails(
-      description='extraction_completed.',
-      file=FileDetails(description='full_dataset', path=filepath),
-      complete=True, time_min=time_min, time_max=time_max)
+      description='dataset',
+      file=FileDetails(description='dataset', path=filepath),
+      complete=extraction_completed, time_min=time_min, time_max=time_max)

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "siaextractlib"
-version = "0.1.0"
+version = "0.2.0"
 description = "Provide an easy to use API for download oceanographic data."
 readme = "README.md"
 authors = [{ name = "SIA", email = "180300337@ucaribe.edu.mx" }]

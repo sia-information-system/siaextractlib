@@ -41,24 +41,27 @@ class CopernicusOpendapExtractor(OpendapExtractor):
   def sync_extract(self, filepath: Path | str) -> ExtractionDetails:
     self.log('starting extraction process.')
     # Try simple case.
-    req_max_size = None
-    try:
-      self.log('Using straightforward method.')
-      return super().sync_extract(filepath=filepath)
-    except HTTPError as err:
-      # Get the max_allowed size
-      self.log(f'Straightforward extraction was not possible.')
-      self.log(err.detail)
-      self.log('Searching for size limitations in error details.')
-      m = re.search(r'max=(([0-9]+)+(.[0-9]+)?)', err.detail)
-      if m:
-        req_max_size = float(m.group().split('=')[1])
-      else:
-        self.log('No size limitations was found in error details. This is a critical error.')
-        raise ExtractionException(messages=[
-          'Unable to perform request split due to max allowed size was not found in error details.',
-          err.detail
-        ])
+    req_max_size = 64 #MB
+    # The use of the straightforward method was omitted due to
+    # in some cases the server does not respond (time out).
+
+    # try:
+    #   self.log('Using straightforward method.')
+    #   return super().sync_extract(filepath=filepath)
+    # except HTTPError as err:
+    #   # Get the max_allowed size
+    #   self.log(f'Straightforward extraction was not possible.')
+    #   self.log(err.detail)
+    #   self.log('Searching for size limitations in error details.')
+    #   m = re.search(r'max=(([0-9]+)+(.[0-9]+)?)', err.detail)
+    #   if m:
+    #     req_max_size = float(m.group().split('=')[1])
+    #   else:
+    #     self.log('No size limitations was found in error details. This is a critical error.')
+    #     raise ExtractionException(messages=[
+    #       'Unable to perform request split due to max allowed size was not found in error details.',
+    #       err.detail
+    #     ])
     self.log('Using request splitting method.')
     # Needs to split the request
     # First way.
@@ -87,6 +90,7 @@ class CopernicusOpendapExtractor(OpendapExtractor):
     n_blocks = int(np.ceil(request_size / req_max_size))
     dim_time_len = len(time_arr)
     block_size = int(np.ceil(dim_time_len / n_blocks))
+    n_blocks = int(np.ceil(dim_time_len / block_size)) # Adjustment to reflect the actual number of blocks due to previous rounding.
     start_index = 0
     end_index = 0
     self.log(f'Split parameters: request_size={request_size}; req_max_size={req_max_size}; n_blocks={n_blocks}; dim_time.length={dim_time_len}; block_size={block_size}.')
@@ -105,7 +109,7 @@ class CopernicusOpendapExtractor(OpendapExtractor):
       timestamp = time.time()
       tmp_filename = f'tmp_dataset_{timestamp}.nc'
       # Computing date range
-      end_index = start_index + block_size
+      end_index = start_index + (block_size - 1) # range is of size: block_size.
       if end_index >= dim_time_len:
         end_index = dim_time_len - 1
         done = True # This is the last iteration

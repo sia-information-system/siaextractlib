@@ -23,8 +23,28 @@ dependencies = [
 ]
 requires-python = ">=3.10"
 
+[project.optional-dependencies]
+dev = ["bumpver"]
+
 [project.urls]
 Homepage = "https://github.com/sia-information-system/siaextractlib"
 
-[project.scripts]
-siaextract = "siaextractcli.siaextract:main"
+[tool.bumpver]
+current_version = "0.2.0"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit_message = "Bump version {old_version} -> {new_version}"
+commit = true
+tag = false
+push = false
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+  'current_version = "{version}"',
+  'version = "{version}"'
+]
+"README.md" = [
+  "**Version: {version}**"
+]
+"src/siaextractlib/__init__.py" = [
+  "__version__ = '{version}'"
+]

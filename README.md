@@ -1,5 +1,7 @@
 # SIAEXTRACTLIB
 
+**Version: 0.2.0**
+
 Python library as part of the SIA project. Its goal is to provide
 an easy to use interface that connects with some open oceanic and
 meteorological data repositories to extract slices of data programaticaly.
@@ -56,28 +58,3 @@ python tests/test_lib_opendap.py
 
 Tests are written with `unittest` framework, so alternative ways of run the
 test are described in its [documentation](https://docs.python.org/3/library/unittest.html).
-
-## CLI
-
-This package includes a command line interface to use the capabilities
-of the library without implement it in code.
-
-The CLI is named `siaextract`, so call
-
-``` sh
-siaextract -h
-```
-
-to show the manual.
-
-To use it, you must create an specification file with the details of
-the data to extract. See the `etc/copernicus_marine.json.example`
-for reference. You can store your custom specification files in `etc/cli-conf/`
-
-Example call for the cli:
-
-``` sh
-siaextract etc/cli-conf/copernicus-marine.json -a get-size
-
-siaextract etc/cli-conf/copernicus-marine.json -a=extract
-```

@@ -152,7 +152,7 @@ def open_dataset(filename_or_obj, log_stream = sys.stderr, **kwargs):
     return xr.open_dataset(filename_or_obj, **kwargs)
   except ValueError as err:
     err_msg = str(err)
-    print(f'An error occured while opening the dataset: f{err_msg}.', file=log_stream)
+    print(f'An error occured while opening the dataset: {err_msg}.', file=log_stream)
     if not re.search(r'unable to decode time units', err_msg):
       raise err.with_traceback(err.__traceback__)
   
@@ -173,4 +173,25 @@ def open_dataset(filename_or_obj, log_stream = sys.stderr, **kwargs):
     del dim_attrs['units']
     decoded_times = num2pydate(dim.data, units=dim.attrs['units'], calendar=calendar)
     dataset = dataset.assign_coords({time_dim_name: (time_dim_name, decoded_times, dim_attrs)})
+  print(f'Dataset successfully loaded and decoded.', file=log_stream)
+  return dataset
+
+
+def open_mfdataset(paths, log_stream = sys.stderr, **kwargs):
+  try:
+    return xr.open_mfdataset(paths, **kwargs)
+  except ValueError as err:
+    err_msg = str(err)
+    print(f'An error occured while opening the datasets: {err_msg}', file=log_stream)
+    if not re.search(r'unable to decode time units', err_msg):
+      raise err.with_traceback(err.__traceback__)
+  
+  # Load one by one using custom time decoding. Then merge them manually.
+  print(f'Trying to load the datasets one by one with custom time decoding to merge them manually.', file=log_stream)
+  datasets = []
+  for p in paths:
+    ds = open_dataset(p, log_stream=log_stream)
+    datasets.append(ds)
+  dataset = xr.merge(datasets)
+  print(f'Datasets successfully merged.', file=log_stream)
   return dataset

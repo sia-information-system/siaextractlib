@@ -1,50 +1,192 @@
 # Standard
 import sys
-import re
 import time
 import traceback
 from pathlib import Path
-from datetime import datetime
-# Thrid party
+from collections.abc import Callable
+# Third party
+import requests
 import numpy as np
 import xarray as xr
-from webob.exc import HTTPError
 # Own
-from siaextractlib.extractors.base_extractor import OpendapExtractor
-from siaextractlib.utils.auth import SimpleAuth
-from siaextractlib.utils.metadata import ExtractionDetails, SizeUnit, FileDetails
 from siaextractlib.processing import wrangling
+from siaextractlib.utils.auth import SimpleAuth
+from siaextractlib.utils.metadata import RequestSize, SizeUnit, FileDetails, ExtractionDetails
 from siaextractlib.utils.exceptions import ExtractionException
+from siaextractlib.extractors.interfaces import ExtractorInterface
+from siaextractlib.processing.parallelism import AsyncRunner, AsyncRunnerManager
+from siaextractlib.extractors.base_extractor import BaseExtractor
 
-class CopernicusOpendapExtractor(OpendapExtractor):
+# Needs Pydap >= 3.3.0
+# https://github.com/pydap/pydap
+class OpendapExtractor(BaseExtractor):
   def __init__(
     self,
     opendap_url: str,
     auth: SimpleAuth = None,
     dim_constraints: dict[str, slice | list] = None,
     requested_vars: list[str] = None,
-    log_stream=sys.stderr,
+    log_stream = sys.stderr,
     max_attempts: int = 5,
+    req_max_size: int = 64, # MB
     verbose: bool = False
   ) -> None:
-    super().__init__(
-      opendap_url=opendap_url,
-      auth=auth,
-      dim_constraints=dim_constraints,
-      requested_vars=requested_vars,
-      log_stream=log_stream,
-      verbose=verbose)
+    super().__init__(log_stream=log_stream, verbose=verbose)
+    self.opendap_url = opendap_url
+    self.auth = auth
+    self.dim_constraints = dim_constraints
+    self.requested_vars = requested_vars
+    self.dataset = None
+    self.filepath = None
+    self.session = None
+    self.time_dim_name = 'time'
     self.max_attempts = max_attempts
     self.tmp_files: list[FileDetails] = []
+    self.req_max_size = req_max_size
+    # self.__async_connect = AsyncRunner(sync_fn=self.sync_connect)
+    self.async_runner_manager.add_runner('connect', AsyncRunner(sync_fn=self.sync_connect))
   
 
+  def verify_safety_for_processing(self):
+    if self.dataset is None:
+      raise ExtractionException(messages='No dataset has been opened. Execute ".connect(...)" first.')
+  
+
+  def forget_tmp_files(self):
+    """
+    Clean the in-between file list without unlink them.
+    """
+    self.tmp_files = []
+  
+
+  def unlink_tmp_files(self):
+    """
+    Remove the in-between files generated.
+    """
+    self.log('Unlinking tmp files.')
+    for f in self.tmp_files:
+      try:
+        f.unlink()
+      except BaseException as err:
+        self.log(f'{err.__class__.__name__}: {err}')
+    # self.tmp_files = []
+    self.forget_tmp_files()
+    self.log('Unlinking done.')
+    
+
+  def connect(self, success_callback: Callable[..., None], failure_callback: Callable[[BaseException], None], **kwargs):
+    """
+    Asynchronous call of "sync_connect(...)" method.
+    """
+    runner = self.async_runner_manager.get_runner('connect')
+    runner.success_callback = success_callback
+    runner.failure_callback = failure_callback
+    runner.sync_fn_kwargs = kwargs
+    runner.run()
+
+
+  def sync_connect(self, **kwargs):
+    """
+    Generate a Pydap connection and open the dataset with it.
+    **kwargs are forwarded to `xr.open_dataset` method.
+    """
+    self.log('Trying to open the remote dataset.')
+    self.close()
+    try:
+      self.session = requests.Session()
+      if self.auth:
+        self.session.auth = (self.auth.user, self.auth.passwd)
+      opendap_conn = xr.backends.PydapDataStore.open(
+        self.opendap_url,
+        session=self.session)
+      self.dataset = wrangling.open_dataset(opendap_conn, log_stream=self.log_stream, **kwargs)
+      self.log('Dataset opened.')
+      return self
+    except BaseException as err:
+      self.close()
+      raise err.with_traceback(err.__traceback__)
+  
+
+  def close(self):
+    if self.session is not None:
+      self.session.close()
+      self.session = None
+      self.dataset = None
+
+
+  def fetch(self, subset: xr.Dataset, path: Path | str) -> FileDetails:
+    """
+    Execute the actual download process and writes the data
+    into an actual file in disk.
+    """
+    self.log('Extracting chunk of data. This can take a while.')
+    subset.to_netcdf(path)
+    subset.close()
+    file_details = FileDetails(description='dataset', path=path)
+    self.log(f'Extracted chunk: {file_details}')
+    return file_details
+
+
+  def get_size(self, unit: SizeUnit = SizeUnit.BYTE) -> RequestSize:
+    self.verify_safety_for_processing()
+    subset = wrangling.slice_dice(self.dataset, self.dim_constraints, self.requested_vars, squeeze=False)
+    rsize = RequestSize()
+    if unit == SizeUnit.KILO_BYTE:
+      rsize.unit = SizeUnit.KILO_BYTE
+      rsize.size = subset.nbytes / 1e3
+    elif unit == SizeUnit.MEGA_BYTE:
+      rsize.unit = SizeUnit.MEGA_BYTE
+      rsize.size = subset.nbytes / 1e6
+    elif unit == SizeUnit.GIGA_BYTE:
+      rsize.unit = SizeUnit.GIGA_BYTE
+      rsize.size = subset.nbytes / 1e9
+    elif unit == SizeUnit.BYTE:
+      rsize.unit = SizeUnit.BYTE
+      rsize.size = subset.nbytes
+    else:
+      raise KeyError(message=f'Option "{unit}" not valid.')
+    return rsize
+
+
+  def get_dims(self) -> list[str]:
+    self.verify_safety_for_processing()
+    return list(self.dataset.coords)
+
+
+  def get_vars(self) -> list[str]:
+    self.verify_safety_for_processing()
+    return list(self.dataset.data_vars)
+
+
+  # Not used.
+  def sync_extract_straightforward(self, filepath: Path | str) -> ExtractionDetails:
+    self.verify_safety_for_processing()
+    self.log('Starting extraction process.')
+    subset = wrangling.slice_dice(self.dataset, self.dim_constraints, self.requested_vars, squeeze=False)
+    file_details = self.fetch(subset, filepath)
+    time_min, time_max = wrangling.get_time_bound_from_ds(dataset=subset, time_dim_name=self.time_dim_name)
+    self.log('Extraction done.')
+    return ExtractionDetails(
+      description='dataset',
+      file=file_details,
+      complete=True,
+      time_min=time_min,
+      time_max=time_max)
+  
+
+  # Actually used.
   def sync_extract(self, filepath: Path | str) -> ExtractionDetails:
+    """
+    Executes the extraction by splitting the request size in blocks of self.req_max_size size.
+    Once all blocks has been downloaded, it merges them all in a new single file.
+    """
+    self.verify_safety_for_processing()
     self.log('starting extraction process.')
-    # Try simple case.
-    req_max_size = 64 #MB
+    req_max_size = self.req_max_size # MB
     # The use of the straightforward method was omitted due to
     # in some cases the server does not respond (time out).
 
+    # Try simple case.
     # try:
     #   self.log('Using straightforward method.')
     #   return super().sync_extract(filepath=filepath)
@@ -84,7 +226,6 @@ class CopernicusOpendapExtractor(OpendapExtractor):
     
     # Computing parameters.
     subset = wrangling.slice_dice(self.dataset, self.dim_constraints, self.requested_vars, squeeze=False)
-    self.log('ping')
     time_arr = wrangling.get_time_dim(subset, time_dim_name=self.time_dim_name).values
     request_size = self.get_size(SizeUnit.MEGA_BYTE).size
     n_blocks = int(np.ceil(request_size / req_max_size))
@@ -148,17 +289,23 @@ class CopernicusOpendapExtractor(OpendapExtractor):
       raise ExtractionException(messages='Maximum number of attempts was reached for the extraction of the first block. No data was extracted.')
     self.log('Merging blocks.')
     fielpaths = [ f.path for f in self.tmp_files ]
-    dataset = xr.open_mfdataset(fielpaths, combine = 'by_coords')
+    # dataset = xr.open_mfdataset(fielpaths, combine = 'by_coords')
+    dataset = wrangling.open_mfdataset(fielpaths, combine = 'by_coords', log_stream=self.log_stream)
     dataset.to_netcdf(filepath)
     time_min, time_max = wrangling.get_time_bound_from_ds(dataset=dataset, time_dim_name=self.time_dim_name)
     dataset.close()
     # Delete tmp files.
-    for f in self.tmp_files:
-      f.unlink()
-    self.tmp_files = []
+    self.unlink_tmp_files()
+    # for f in self.tmp_files:
+    #   f.unlink()
+    # self.tmp_files = []
     # Return data.
     self.log('Extraction successfully completed.')
     return ExtractionDetails(
       description='dataset',
       file=FileDetails(description='dataset', path=filepath),
       complete=extraction_completed, time_min=time_min, time_max=time_max)
+
+
+  def __del__(self):
+    self.close()

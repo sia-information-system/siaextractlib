@@ -87,7 +87,7 @@ class OpendapExtractor(BaseExtractor):
 
   def sync_connect(self, **kwargs):
     """
-    Generate a Pydap connection and open the dataset with it.
+    Generates a Pydap connection and open the dataset with it.
     **kwargs are forwarded to `xr.open_dataset` method.
     """
     self.log('Trying to open the remote dataset.')
@@ -108,6 +108,9 @@ class OpendapExtractor(BaseExtractor):
   
 
   def close(self):
+    """
+    Closes the connection with the remote dataset.
+    """
     if self.session is not None:
       self.session.close()
       self.session = None
@@ -116,7 +119,7 @@ class OpendapExtractor(BaseExtractor):
 
   def fetch(self, subset: xr.Dataset, path: Path | str) -> FileDetails:
     """
-    Execute the actual download process and writes the data
+    Executes the actual download process and writes the data
     into an actual file in disk.
     """
     self.log('Extracting chunk of data. This can take a while.')
@@ -128,6 +131,9 @@ class OpendapExtractor(BaseExtractor):
 
 
   def get_size(self, unit: SizeUnit = SizeUnit.BYTE) -> RequestSize:
+    """
+    Returns the size of the dataset based on the current constraints.
+    """
     self.verify_safety_for_processing()
     subset = wrangling.slice_dice(self.dataset, self.dim_constraints, self.requested_vars, squeeze=False)
     rsize = RequestSize()
@@ -149,11 +155,17 @@ class OpendapExtractor(BaseExtractor):
 
 
   def get_dims(self) -> list[str]:
+    """
+    Returns the dimensions of the dataset.
+    """
     self.verify_safety_for_processing()
     return list(self.dataset.coords)
 
 
   def get_vars(self) -> list[str]:
+    """
+    Returns the variables of the dataset.
+    """
     self.verify_safety_for_processing()
     return list(self.dataset.data_vars)
 
@@ -164,7 +176,7 @@ class OpendapExtractor(BaseExtractor):
     self.log('Starting extraction process.')
     subset = wrangling.slice_dice(self.dataset, self.dim_constraints, self.requested_vars, squeeze=False)
     file_details = self.fetch(subset, filepath)
-    time_min, time_max = wrangling.get_time_bound_from_ds(dataset=subset, time_dim_name=self.time_dim_name)
+    time_min, time_max = wrangling.get_time_bound_from_ds(dataset=subset)
     self.log('Extraction done.')
     return ExtractionDetails(
       description='dataset',
@@ -226,7 +238,10 @@ class OpendapExtractor(BaseExtractor):
     
     # Computing parameters.
     subset = wrangling.slice_dice(self.dataset, self.dim_constraints, self.requested_vars, squeeze=False)
-    time_arr = wrangling.get_time_dim(subset, time_dim_name=self.time_dim_name).values
+    time_dim, self.time_dim_name = wrangling.get_time_dim(subset)
+    if time_dim is None:
+      raise ExtractionException(messages='No time dimension found in extraction process. Cannot proceed.')
+    time_arr = time_dim.values
     request_size = self.get_size(SizeUnit.MEGA_BYTE).size
     n_blocks = int(np.ceil(request_size / req_max_size))
     dim_time_len = len(time_arr)
@@ -292,7 +307,7 @@ class OpendapExtractor(BaseExtractor):
     # dataset = xr.open_mfdataset(fielpaths, combine = 'by_coords')
     dataset = wrangling.open_mfdataset(fielpaths, combine = 'by_coords', log_stream=self.log_stream)
     dataset.to_netcdf(filepath)
-    time_min, time_max = wrangling.get_time_bound_from_ds(dataset=dataset, time_dim_name=self.time_dim_name)
+    time_min, time_max = wrangling.get_time_bound_from_ds(dataset=dataset)
     dataset.close()
     # Delete tmp files.
     self.unlink_tmp_files()

@@ -12,7 +12,7 @@ import warnings
 # Third party
 
 # Own
-from siaextractlib.extractors import OpendapExtractor, CopernicusOpendapExtractor
+from siaextractlib.extractors import OpendapExtractor
 from siaextractlib.utils.auth import SimpleAuth
 from siaextractlib.utils.log import LogStream
 from siaextractlib.utils.exceptions import ExtractionException
@@ -254,7 +254,7 @@ class TestCopernicusOpendap(OpendapTestCase):
     
     log_stream = LogStream(callback=show_log)
 
-    extractor = CopernicusOpendapExtractor(
+    extractor = OpendapExtractor(
       opendap_url='https://nrt.cmems-du.eu/thredds/dodsC/cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m',
       auth=SimpleAuth(user=config['DEFAULT']['COPERNICUS_USER'], passwd=config['DEFAULT']['COPERNICUS_PASSWD']),
       dim_constraints={
@@ -286,7 +286,7 @@ class TestCopernicusOpendap(OpendapTestCase):
       print(data, end='', file=sys.stderr)
     log_stream = LogStream(callback=show_log)
 
-    extractor = CopernicusOpendapExtractor(
+    extractor = OpendapExtractor(
       opendap_url='https://nrt.cmems-du.eu/thredds/dodsC/cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m',
       auth=SimpleAuth(user=config['DEFAULT']['COPERNICUS_USER'], passwd=config['DEFAULT']['COPERNICUS_PASSWD']),
       dim_constraints={
@@ -316,7 +316,7 @@ class TestCopernicusOpendap(OpendapTestCase):
       print(data, end='', file=sys.stderr)
     log_stream = LogStream(callback=show_log)
 
-    extractor = CopernicusOpendapExtractor(
+    extractor = OpendapExtractor(
       opendap_url='https://nrt.cmems-du.eu/thredds/dodsC/cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m',
       auth=SimpleAuth(user=config['DEFAULT']['COPERNICUS_USER'], passwd=config['DEFAULT']['COPERNICUS_PASSWD']),
       dim_constraints={

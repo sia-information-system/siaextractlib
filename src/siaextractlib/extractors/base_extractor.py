@@ -32,6 +32,11 @@ class BaseExtractor(ExtractorInterface):
   
 
   def log(self, *args, **kwargs):
+    """
+    Prints logs to the self.log_stream. This stream does not need to be
+    a real stream. Just need to implements the .write(...) method.
+    The arguments are the same than in print(...) standard function.
+    """
     if self.verbose:
       print(*args, **kwargs, file=self.log_stream)
   
@@ -50,9 +55,17 @@ class BaseExtractor(ExtractorInterface):
     runner.run()
 
 
-  def wait(self, seconds: float = None) -> None:
-    self.async_runner_manager.get_runner('extract').wait(seconds=seconds)
+  def wait(self, process_name: str, seconds: float = None) -> None:
+    """
+    Waits until the `process_name` process ends. The `process_name`
+    is the name of an async method.
+    """
+    self.async_runner_manager.get_runner(process_name).wait(seconds=seconds)
   
 
-  def still_working(self) -> bool:
-    return self.async_runner_manager.get_runner('extract').still_working()
+  def still_working(self, process_name: str) -> bool:
+    """
+    Returns True if the `process_name` process is still running.
+    The `process_name` is the name of an async method.
+    """
+    return self.async_runner_manager.get_runner(process_name).still_working()

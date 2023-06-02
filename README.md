@@ -41,10 +41,10 @@ See [local installation](https://pip.pypa.io/en/stable/topics/local-project-inst
 ### Development mode
 
 **NOTE**: For development, it's recommended to use an isolated environment.
-You can use tools like `anaconda` / `minionda` or `virtualenv` to create
-this kind of environments. We recommend `miniconda`. If you store the
-environment in the root directory of the project, name the environment as
-`venv` sin this name directory is ignored by git.
+You can use tools like `conda` (`anaconda` / `minionda`) or `virtualenv` to
+create this kind of environments. We recommend `conda`. If you don't want to use
+`conda` and you store the environment in the root directory of the project,
+name it as `venv` since this name of directory is ignored by git.
 
 To install the package in development mode (--editable), run the following command
 in the package root directory (where de `pyproject.toml` file is located):
@@ -52,6 +52,8 @@ in the package root directory (where de `pyproject.toml` file is located):
 ``` sh
 pip install --editable .[dev]
 ```
+
+See [local installation](https://pip.pypa.io/en/stable/topics/local-project-installs/) for details.
 
 To increase the version number, the package `bumpver` is used.
 [Read the docs](https://github.com/mbarkhau/bumpver#reference)

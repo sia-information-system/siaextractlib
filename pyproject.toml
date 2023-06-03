@@ -9,8 +9,12 @@ name = "siaextractlib"
 version = "0.2.1"
 description = "Provide an easy to use API for download oceanographic data."
 readme = "README.md"
-authors = [{ name = "SIA", email = "180300337@ucaribe.edu.mx" }]
-keywords = ["gis", "cartography", "oceanographic", "oceanic", "etl", "extraction"]
+authors = [{ name = "Alexis Montejo et al." }]
+maintainers = [
+  {name = "SIA Project"},
+]
+license = { file = "LICENSE" }
+keywords = ["gis", "oceanographic", "oceanic", "etl", "data", "extraction"]
 dependencies = [
   "xarray >= 2023.5.0",
   "netcdf4 == 1.6.2",
@@ -24,10 +28,11 @@ dependencies = [
 requires-python = ">=3.10"
 
 [project.optional-dependencies]
-dev = ["bumpver"]
+dev = ["bumpver", "build", "twine"]
 
 [project.urls]
-Homepage = "https://github.com/sia-information-system/siaextractlib"
+homepage = "https://sia-information-system.github.io/sia-website"
+source = "https://github.com/sia-information-system/siaextractlib"
 
 [tool.bumpver]
 current_version = "0.2.1"

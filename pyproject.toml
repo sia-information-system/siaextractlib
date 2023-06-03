@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "siaextractlib"
-version = "0.2.1"
+version = "0.2.2"
 description = "Provide an easy to use API for download oceanographic data."
 readme = "README.md"
 authors = [{ name = "Alexis Montejo et al." }]
@@ -35,7 +35,7 @@ homepage = "https://sia-information-system.github.io/sia-website"
 source = "https://github.com/sia-information-system/siaextractlib"
 
 [tool.bumpver]
-current_version = "0.2.1"
+current_version = "0.2.2"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true

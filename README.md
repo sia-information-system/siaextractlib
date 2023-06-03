@@ -1,6 +1,6 @@
 # SIAEXTRACTLIB
 
-**Version: 0.2.1**
+**Version: 0.2.2**
 
 Python library as part of the SIA project. Its goal is to provide
 an easy to use interface that connects with oceanic data repositories

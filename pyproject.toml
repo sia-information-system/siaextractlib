@@ -31,8 +31,8 @@ requires-python = ">=3.10"
 dev = ["bumpver", "build", "twine"]
 
 [project.urls]
-homepage = "https://sia-information-system.github.io/sia-website"
-source = "https://github.com/sia-information-system/siaextractlib"
+Homepage = "https://sia-information-system.github.io/sia-website"
+"Source Code" = "https://github.com/sia-information-system/siaextractlib"
 
 [tool.bumpver]
 current_version = "0.2.2"
